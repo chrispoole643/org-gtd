@@ -75,9 +75,10 @@
       ;; Don't show the postamble in exported docs
       org-export-html-postamble nil
       ;; Use priority to mark Urgent tasks
-      org-default-priority ?U
-      org-lowest-priority ?U
-      org-highest-priority ?U
+      org-default-priority ?B
+      org-lowest-priority ?C
+      org-highest-priority ?A
+      org-priority-start-cycle-with-default nil
       ;; Define stuck projects as level 2 items that aren't a DONE or NEXT
       ;; action, don't have NEXT actions inside them, and don't have items
       ;; tagged as waiting.
