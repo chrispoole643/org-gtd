@@ -111,7 +111,7 @@ in `org-todo-keywords'."
 (defun gtd-mark-completed-exported-tasks-as-done ()
   "Find completed entries in exported action lists (e.g., those
 marked \"[x]\"), and mark them \"DONE\" in the originating agenda
-file. Save all org buffers."
+file."
   (interactive)
   ;; done-tasks becomes a list of paired values, title & tag.
   ;; For example, ("book an appointment" "phone").
@@ -137,66 +137,82 @@ file. Save all org buffers."
                            (when (equal title (org-get-heading t t))
                              (org-entry-put (point) "TODO" "DONE")))
                          tag 'agenda))
-      (setq done-tasks (cddr done-tasks)))
-    (org-save-all-org-buffers)))
-
-;(setq data (org-element-parse-buffer))
-;; (let ((new-data nil))
-;;   (org-element-map data 'headline
-;;     (lambda (hl)
-;;       (let ((title (org-element-property :raw-value hl))
-;;             (notrootp (> (org-element-property :level hl) 1))
-;;             (scheduledp (org-element-property :scheduled hl))
-;;             (deadlinep (org-element-property :deadline hl))
-;;             (todop (equal 'todo (org-element-property :todo-type hl)))
-;;             (notdonep (not (equal "DONE" (org-element-property :todo-keyword hl)))))
-;;         (when (and notrootp
-;;                    (or scheduledp
-;;                        deadlinep)
-;;                    todop
-;;                    notdonep)
-;;           (message title)
-;;           (setq new-data (append (list hl) new-data))))))
-;;   (setq new-data (append (list 'nil) new-data))
-;;   (setq new-data (append (list 'org-data) new-data))
-;;   new-data)
-
-(defun gtd-filter-scheduled-todo-tasks (data backend info)
-  "Filter iCalendar export to include only TODO tasks that are
-not done, but which are scheduled or have a deadline.
-
-Aim: ignore items that are NOT the main section (like \"Actions\"), and
-NOT scheduled (or deadlined) tasks that aren't done"
-  (when (eq backend 'icalendar)
-    (let ((new-data nil))
-      (org-element-map data 'headline
-        (lambda (hl)
-          (let ((title (org-element-property :raw-value hl))
-                (notrootp (> (org-element-property :level hl) 1))
-                (scheduledp (org-element-property :scheduled hl))
-                (deadlinep (org-element-property :deadline hl))
-                (todop (equal 'todo (org-element-property :todo-type hl)))
-                (notdonep (not (equal "DONE" (org-element-property :todo-keyword hl)))))
-            (when (and notrootp
-                       (or scheduledp
-                           deadlinep)
-                       todop
-                       notdonep)
-              (setq new-data (append (list hl) new-data))))))
-      (setq new-data (append (list 'nil) new-data))
-      (setq new-data (append (list 'org-data) new-data))
-      new-data)))
+      (setq done-tasks (cddr done-tasks)))))
 
 (defun gtd-export-agendas-and-calendar ()
-  "Store agenda views as plain text files, and export scheduled
-events to a combined iCalendar file. Filter the calendar using
-`gtd-filter-scheduled-todo-tasks', only allowing tasks that
-aren't DONE, but are scheduled."
+  "Mark any completed tasks in exported action lists as \"DONE\",
+  before generating new action lists. Export scheduled tasks or
+  those with set deadlines (that aren't \"DONE\") to an iCalendar
+  file too."
   (interactive)
   (gtd-mark-completed-exported-tasks-as-done)
   (org-store-agenda-views)
-  (let ((org-export-filter-parse-tree-functions '(gtd-filter-scheduled-todo-tasks)))
-    (org-icalendar-combine-agenda-files)))
+  ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
+  ;; are scheduled or have deadlines, storing their starting character position if found.
+  (let ((calendar-hash (make-hash-table :test 'equal))
+        (calendar-items nil))
+    (org-map-entries (lambda ()
+                       (let ((scheduledp (org-get-scheduled-time (point) nil))
+                             (deadlinep (org-get-deadline-time (point) nil))
+                             (notdonep (not (equal "DONE" (org-get-todo-state))))
+                             (filename (org-entry-get (point) "FILE")))
+                         (when (and (or scheduledp
+                                        deadlinep)
+                                    notdonep)
+                           (puthash filename (cons (point) (gethash filename calendar-hash)) calendar-hash))))
+                     nil 'agenda)
+    ;; Turn the hash into an alist
+    (maphash (lambda (key value)
+               (add-to-list 'calendar-items (cons key value)))
+             calendar-hash)
+    ;; Build iCalendar export file, restricting the items to only those just
+    ;; found. `calendar-items' is an alist where key is a file name and value a list of
+    ;; buffer positions pointing to entries that should appear in the calendar.
+    (apply 'org-icalendar--combine-files calendar-items (org-agenda-files t)))
+  (org-save-all-org-buffers))
+
+;;; This is another way of choosing scheduled or deadlined tasks to export to
+;;; iCalendar. It should be used as:
+
+;;; `(let ((org-export-filter-parse-tree-functions '(gtd-filter-scheduled-todo-tasks)))
+;;;   (org-icalendar-combine-agenda-files))'.
+
+;;; The idea is to find the scheduled tasks, and ignore the others. However, if a
+;;; scheduled task is a subtask, where the parent task isn't scheduled, then the parent
+;;; tree will be ignored, so the calendar will always be empty. My idea was to find the
+;;; scheduled items, and pull those headlines out of the tree, to be appended to `data',
+;;; such that the scheduled task will still show. I ended up using the alternative, which
+;;; is to find the positions in all agenda buffers of scheduled tasks, and pass that to
+;;; `org-icalendar--combine-files' (which uses them as a restriction).
+
+;; (defun gtd-filter-scheduled-todo-tasks (data backend info)
+;;   "Filter iCalendar export to include only TODO tasks that are
+;; not done, but which are scheduled or have a deadline.
+
+;; Aim: ignore items that are NOT the main section (like \"Actions\"), and
+;; NOT scheduled (or deadlined) tasks that aren't done"
+;;   (when (eq backend 'icalendar)
+;;     (let ((new-data nil))
+;;       (org-element-map data 'headline
+;;         (lambda (hl)
+;;           (let ((title (org-element-property :raw-value hl))
+;;                 (notrootp (> (org-element-property :level hl) 1))
+;;                 (scheduledp (org-element-property :scheduled hl))
+;;                 (deadlinep (org-element-property :deadline hl))
+;;                 (todop (equal 'todo (org-element-property :todo-type hl)))
+;;                 (notdonep (not (equal "DONE" (org-element-property :todo-keyword hl)))))
+;;             (when (and todop
+;;                        notdonep
+;;                        notrootp
+;;                        (or scheduledp
+;;                            deadlinep))
+;;               ;; (setq new-data (append (list hl) new-data))
+;;               ))))
+;;       ;; (setq new-data (append (list 'nil) new-data))
+;;       ;; (setq new-data (append (list 'org-data) new-data))
+;;       (type-of data)
+;;       ;(type-of new-data)
+;;       data)))
 
 
 ;;; Capture
