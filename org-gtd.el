@@ -243,7 +243,7 @@ file."
 ;;; Agenda
 
 (setq ;; Show next x days in agenda
-      org-agenda-span 7
+      org-agenda-span 3
       ;; Show dates even if totally free
       org-agenda-show-all-dates nil
       ;; Don't show things already done
@@ -257,7 +257,7 @@ file."
                              "--------------------"
                              (800 1000 1200 1400 1600 1800 2000 2200))
       ;; Always start with today (nil) or Saturday (6)
-      org-agenda-start-on-weekday 6
+      org-agenda-start-on-weekday nil
       ;; Only include project and action lists in agenda
       org-agenda-files (list gtd-projects-file gtd-actions-file gtd-calendar-file gtd-goals-file)
       ;; Don't by default show the action in context
