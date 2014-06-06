@@ -225,7 +225,7 @@ file."
       '(("i" "Inbox" entry (file+headline "" "Inbox")
          "* %?")
         ("p" "Project" entry (file+headline gtd-projects-file "Projects")
-         "* %?")
+         "* %?\n:PROPERTIES:\n:ATTACH_DIR_INHERIT: t\n:END:")
         ("a" "Action" entry (file+headline gtd-actions-file "Actions")
          "* NEXT %?")
         ("h" "Home action" entry (file+headline gtd-actions-file "Actions")
