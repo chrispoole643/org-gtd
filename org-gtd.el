@@ -310,9 +310,7 @@ file."
                                                                      "\n"))
                                                            (org-agenda-sorting-strategy
                                                             '((agenda time-up priority-down tag-up)))))
-                                               (agenda "" ((org-agenda-span 3)
-                                                           (org-agenda-skip-deadline-if-done t)
-                                                           (org-agenda-skip-scheduled-if-done t))))
+                                               (agenda ""))
                                               nil
                                               (,action-list))))))
                           org-tag-alist)))
