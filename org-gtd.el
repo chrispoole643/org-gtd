@@ -163,7 +163,8 @@ file."
                          (when (and (or scheduledp
                                         deadlinep)
                                     notdonep)
-                           (puthash filename (cons (point) (gethash filename calendar-hash)) calendar-hash))))
+                           (puthash filename (cons (point) (gethash filename calendar-hash))
+                                    calendar-hash))))
                      nil 'agenda)
     ;; Turn the hash into an alist
     (maphash (lambda (key value)
@@ -309,7 +310,9 @@ file."
                                                                      "\n"))
                                                            (org-agenda-sorting-strategy
                                                             '((agenda time-up priority-down tag-up)))))
-                                               (agenda ""))
+                                               (agenda "" ((org-agenda-span 3)
+                                                           (org-agenda-skip-deadline-if-done t)
+                                                           (org-agenda-skip-scheduled-if-done t))))
                                               nil
                                               (,action-list))))))
                           org-tag-alist)))
