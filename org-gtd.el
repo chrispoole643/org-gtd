@@ -112,6 +112,7 @@ in `org-todo-keywords'."
                (match-string 0 keyword))
              (delete "|" (cdar org-todo-keywords)) "\\|"))
 
+;;; TODO fix this function --- causes DONE tasks to appear in agenda again
 (defun gtd-mark-completed-exported-tasks-as-done ()
   "Find completed entries in exported action lists (e.g., those
 marked \"[x]\"), and mark them \"DONE\" in the originating agenda
@@ -149,31 +150,35 @@ file."
   those with set deadlines (that aren't \"DONE\") to an iCalendar
   file too."
   (interactive)
-  (gtd-mark-completed-exported-tasks-as-done)
+  ;(gtd-mark-completed-exported-tasks-as-done)
   (org-store-agenda-views)
-  ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
-  ;; are scheduled or have deadlines, storing their starting character position if found.
-  (let ((calendar-hash (make-hash-table :test 'equal))
-        (calendar-items nil))
-    (org-map-entries (lambda ()
-                       (let ((scheduledp (org-get-scheduled-time (point) nil))
-                             (deadlinep (org-get-deadline-time (point) nil))
-                             (notdonep (not (equal "DONE" (org-get-todo-state))))
-                             (filename (org-entry-get (point) "FILE")))
-                         (when (and (or scheduledp
-                                        deadlinep)
-                                    notdonep)
-                           (puthash filename (cons (point) (gethash filename calendar-hash))
-                                    calendar-hash))))
-                     nil 'agenda)
-    ;; Turn the hash into an alist
-    (maphash (lambda (key value)
-               (add-to-list 'calendar-items (cons key value)))
-             calendar-hash)
-    ;; Build iCalendar export file, restricting the items to only those just
-    ;; found. `calendar-items' is an alist where key is a file name and value a list of
-    ;; buffer positions pointing to entries that should appear in the calendar.
-    (apply 'org-icalendar--combine-files calendar-items (org-agenda-files t)))
+  (save-window-excursion
+    (org-agenda nil "C")
+    (org-icalendar-export-current-agenda org-icalendar-combined-agenda-file)
+    (kill-buffer))
+  ;; ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
+  ;; ;; are scheduled or have deadlines, storing their starting character position if found.
+  ;; (let ((calendar-hash (make-hash-table :test 'equal))
+  ;;       (calendar-items nil))
+  ;;   (org-map-entries (lambda ()
+  ;;                      (let ((scheduledp (org-get-scheduled-time (point) nil))
+  ;;                            (deadlinep (org-get-deadline-time (point) nil))
+  ;;                            (notdonep (not (equal "DONE" (org-get-todo-state))))
+  ;;                            (filename (org-entry-get (point) "FILE")))
+  ;;                        (when (and (or scheduledp
+  ;;                                       deadlinep)
+  ;;                                   notdonep)
+  ;;                          (puthash filename (cons (point) (gethash filename calendar-hash))
+  ;;                                   calendar-hash))))
+  ;;                    nil 'agenda)
+  ;;   ;; Turn the hash into an alist
+  ;;   (maphash (lambda (key value)
+  ;;              (add-to-list 'calendar-items (cons key value)))
+  ;;            calendar-hash)
+  ;;   ;; Build iCalendar export file, restricting the items to only those just
+  ;;   ;; found. `calendar-items' is an alist where key is a file name and value a list of
+  ;;   ;; buffer positions pointing to entries that should appear in the calendar.
+  ;;   (apply 'org-icalendar--combine-files calendar-items (org-agenda-files t)))
   (org-save-all-org-buffers))
 
 ;;; This is another way of choosing scheduled or deadlined tasks to export to
@@ -326,7 +331,12 @@ file."
                             (org-agenda-start-with-log-mode t)
                             (org-agenda-overriding-header "")
                             (org-agenda-skip-deadline-if-done nil)
-                            (org-agenda-skip-scheduled-if-done nil))))))
+                            (org-agenda-skip-scheduled-if-done nil))))) t)
+
+(add-to-list 'org-agenda-custom-commands
+             '("C" "Calendared tasks"
+               ((agenda "" ((org-agenda-span 124)
+                            (org-agenda-start-day "-1m"))))) t)
 
 ;; Export agendas as action lists
 (setq org-agenda-exporter-settings
