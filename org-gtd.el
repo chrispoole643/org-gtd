@@ -358,7 +358,8 @@ file."
                            (gtd-actions-file :maxlevel . 3)
                            (gtd-someday-maybe-file :maxlevel . 3)
                            (gtd-reference-file :maxlevel . 3)
-                           (gtd-calendar-file :maxlevel . 3)))
+                           (gtd-calendar-file :maxlevel . 3)
+                           (gtd-goals-file :maxlevel . 3)))
 
 
 ;;; Hooks
