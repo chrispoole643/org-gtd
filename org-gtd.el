@@ -152,33 +152,33 @@ file."
   (interactive)
   ;(gtd-mark-completed-exported-tasks-as-done)
   (org-store-agenda-views)
-  (save-window-excursion
-    (org-agenda nil "C")
-    (org-icalendar-export-current-agenda org-icalendar-combined-agenda-file)
-    (kill-buffer))
-  ;; ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
-  ;; ;; are scheduled or have deadlines, storing their starting character position if found.
-  ;; (let ((calendar-hash (make-hash-table :test 'equal))
-  ;;       (calendar-items nil))
-  ;;   (org-map-entries (lambda ()
-  ;;                      (let ((scheduledp (org-get-scheduled-time (point) nil))
-  ;;                            (deadlinep (org-get-deadline-time (point) nil))
-  ;;                            (notdonep (not (equal "DONE" (org-get-todo-state))))
-  ;;                            (filename (org-entry-get (point) "FILE")))
-  ;;                        (when (and (or scheduledp
-  ;;                                       deadlinep)
-  ;;                                   notdonep)
-  ;;                          (puthash filename (cons (point) (gethash filename calendar-hash))
-  ;;                                   calendar-hash))))
-  ;;                    nil 'agenda)
-  ;;   ;; Turn the hash into an alist
-  ;;   (maphash (lambda (key value)
-  ;;              (add-to-list 'calendar-items (cons key value)))
-  ;;            calendar-hash)
-  ;;   ;; Build iCalendar export file, restricting the items to only those just
-  ;;   ;; found. `calendar-items' is an alist where key is a file name and value a list of
-  ;;   ;; buffer positions pointing to entries that should appear in the calendar.
-  ;;   (apply 'org-icalendar--combine-files calendar-items (org-agenda-files t)))
+  ;; (save-window-excursion
+  ;;   (org-agenda nil "C")
+  ;;   (org-icalendar-export-current-agenda org-icalendar-combined-agenda-file)
+  ;;   (kill-buffer))
+  ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
+  ;; are scheduled or have deadlines, storing their starting character position if found.
+  (let ((calendar-hash (make-hash-table :test 'equal))
+        (calendar-items nil))
+    (org-map-entries (lambda ()
+                       (let ((scheduledp (org-get-scheduled-time (point) nil))
+                             (deadlinep (org-get-deadline-time (point) nil))
+                             (notdonep (not (equal "DONE" (org-get-todo-state))))
+                             (filename (org-entry-get (point) "FILE")))
+                         (when (and (or scheduledp
+                                        deadlinep)
+                                    notdonep)
+                           (puthash filename (cons (point) (gethash filename calendar-hash))
+                                    calendar-hash))))
+                     nil 'agenda)
+    ;; Turn the hash into an alist
+    (maphash (lambda (key value)
+               (add-to-list 'calendar-items (cons key value)))
+             calendar-hash)
+    ;; Build iCalendar export file, restricting the items to only those just
+    ;; found. `calendar-items' is an alist where key is a file name and value a list of
+    ;; buffer positions pointing to entries that should appear in the calendar.
+    (apply 'org-icalendar--combine-files calendar-items (org-agenda-files t)))
   (org-save-all-org-buffers))
 
 ;;; This is another way of choosing scheduled or deadlined tasks to export to
