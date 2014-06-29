@@ -333,11 +333,6 @@ file."
                             (org-agenda-skip-deadline-if-done nil)
                             (org-agenda-skip-scheduled-if-done nil))))) t)
 
-(add-to-list 'org-agenda-custom-commands
-             '("C" "Calendared tasks"
-               ((agenda "" ((org-agenda-span 124)
-                            (org-agenda-start-day "-1m"))))) t)
-
 ;; Export agendas as action lists
 (setq org-agenda-exporter-settings
       '((ps-number-of-columns 2)
