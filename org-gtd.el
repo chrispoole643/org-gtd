@@ -152,10 +152,6 @@ file."
   (interactive)
   ;(gtd-mark-completed-exported-tasks-as-done)
   (org-store-agenda-views)
-  ;; (save-window-excursion
-  ;;   (org-agenda nil "C")
-  ;;   (org-icalendar-export-current-agenda org-icalendar-combined-agenda-file)
-  ;;   (kill-buffer))
   ;; Iterate through every headline in the agenda files, looking for not-DONE tasks that
   ;; are scheduled or have deadlines, storing their starting character position if found.
   (let ((calendar-hash (make-hash-table :test 'equal))
