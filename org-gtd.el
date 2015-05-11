@@ -1,10 +1,10 @@
 ;;; org-gtd.el --- An implementation of GTD with org-mode.
 
-;; Version: 1.
+;; Version: 1
 ;; Author: Chris Poole <chris@chrispoole.com>
 ;; Url: https://github.com/chrispoole643/org-gtd
 
-;; Copyright (c) 2014 Chris Poole
+;; Copyright (c) 2014--2015 Chris Poole
 
 ;; Permission is hereby granted, free of charge, to any person obtaining a copy
 ;; of this software and associated documentation files (the "Software"), to deal
@@ -30,10 +30,6 @@
 
 ;;; Variables
 
-(defvar gtd-agenda-use-full-frame-p t
-  "When true, if using a multi-frame Emacs environment, have the
-  agenda delete other windows when being displayed.")
-
 ;; Define file locations
 (setq org-default-notes-file (concat org-directory "inbox.org")
       gtd-projects-file (concat org-directory "projects.org")
@@ -42,7 +38,16 @@
       gtd-someday-maybe-file (concat org-directory "someday-maybe.org")
       gtd-reference-file (concat org-directory "reference.org")
       gtd-calendar-file (concat org-directory "calendar.org")
-      gtd-goals-file (concat org-directory "goals.org"))
+      gtd-goals-file (concat org-directory "goals.org")
+      org-agenda-files (list gtd-projects-file gtd-actions-file gtd-calendar-file gtd-goals-file))
+
+(defvar gtd-agenda-use-full-frame-p t
+  "When true, if using a multi-frame Emacs environment, have the
+  agenda delete other windows when being displayed.")
+
+(defvar gtd-agenda-and-reference-files (append (list gtd-someday-maybe-file gtd-reference-file)
+                                               org-agenda-files)
+  "List of `org-agenda-files' and the someday-maybe and references files.")
 
 ;; Setup org mode
 (setq ;; Show upcoming deadlines 3 days prior
@@ -57,8 +62,8 @@
       org-startup-indented t
       ;; Show inline images
       org-startup-with-inline-images t
-      ;; Use ido (flex) completion; disable completing in steps for performance
-      org-completion-use-ido t
+      ;; Disable ido and completing in steps for performance and Helm use
+      org-completion-use-ido nil
       org-outline-path-complete-in-steps nil
       ;; Split line in the middle with M-RET
       org-M-RET-may-split-line t
@@ -98,11 +103,25 @@
 ;;; Functions
 
 (defun gtd-open-file ()
-  "Open a GTD org-mode file (using the Ido system)."
+  "Open a GTD org-mode file (using Helm system)."
   (interactive)
   (find-file (concat org-directory
-                     (ido-completing-read "GTD file: " (directory-files org-directory
-                                                                        nil "\.org$")))))
+                     (funcall (if (fboundp 'helm-comp-read)
+                                  'completing-read 'helm-comp-read)
+                              "GTD file: " (directory-files org-directory
+                                                            nil "\.org$")))))
+
+(defun gtd-helm-show-org-agenda-and-reference-files-headings ()
+  (interactive)
+  "If helm mode is active, use it to find a heading in the files
+listed by `gtd-agenda-and-reference-files'. If helm isn't active,
+use the org-refile interface."
+  (if (helm-mode)
+      (helm :sources (helm-source-org-headings-for-files gtd-agenda-and-reference-files)
+            :candidate-number-limit 99999
+            :buffer "*helm org headings*")
+    (org-refile '(4)))
+  (recenter))
 
 (defun gtd-construct-todo-regex ()
   "Construct a regular expression matching any of the todo states
@@ -228,6 +247,8 @@ file."
          "* %?")
         ("p" "Project" entry (file+headline gtd-projects-file "Projects")
          "* %?\n:PROPERTIES:\n:ATTACH_DIR_INHERIT: t\n:END:")
+        ("s" "Someday/maybe" entry (file+headline gtd-someday-maybe-file "Someday / Maybe")
+         "* %?\n:PROPERTIES:\n:ATTACH_DIR_INHERIT: t\n:END:")
         ("a" "Action" entry (file+headline gtd-actions-file "Actions")
          "* NEXT %?")
         ("h" "Home action" entry (file+headline gtd-actions-file "Actions")
@@ -260,8 +281,6 @@ file."
                              (800 1000 1200 1400 1600 1800 2000 2200))
       ;; Always start with today (nil) or Saturday (6)
       org-agenda-start-on-weekday nil
-      ;; Only include project and action lists in agenda
-      org-agenda-files (list gtd-projects-file gtd-actions-file gtd-calendar-file gtd-goals-file)
       ;; Don't by default show the action in context
       org-agenda-start-with-follow-mode nil
       ;; Don't show tags in the agendas
@@ -329,6 +348,25 @@ file."
                             (org-agenda-skip-deadline-if-done nil)
                             (org-agenda-skip-scheduled-if-done nil))))) t)
 
+;; Special agenda to print 
+(add-to-list 'org-agenda-custom-commands  '("P" "Printed agenda"
+                                            ((agenda "" ((org-agenda-ndays 7)
+                                                         (org-agenda-start-on-weekday nil)
+                                                         (org-agenda-repeating-timestamp-show-all t)
+                                                         (org-agenda-entry-types '(:timestamp :sexp))))
+                                             (agenda "" ((org-agenda-ndays 1) ;; daily agenda
+                                                         (org-deadline-warning-days 7)
+                                                         (org-agenda-todo-keyword-format "□")
+                                                         (org-agenda-scheduled-leaders '("" ""))
+                                                         (org-agenda-prefix-format "%t%s")))
+                                             (todo "NEXT"
+                                                   ((org-agenda-prefix-format "□ %T: ")
+                                                    (org-agenda-sorting-strategy '(tag-up priority-down))
+                                                    (org-agenda-todo-keyword-format "")
+                                                    (org-agenda-overriding-header ""))))
+                                            ((org-agenda-compact-blocks t))
+                                            ("~/agenda.pdf")))
+
 ;; Export agendas as action lists
 (setq org-agenda-exporter-settings
       '((ps-number-of-columns 2)
@@ -381,8 +419,3 @@ file."
 (provide 'org-gtd)
 
 ;;; org-gtd.el ends here
-
-
-
-
-
